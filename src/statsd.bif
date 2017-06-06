@@ -28,3 +28,35 @@ function statsd_increment%(s: string, c: count%): any
     //close(sock);
     return 0;
     %}
+
+
+function statsd_set%(s: string, c: string%): any
+   %{
+    static int sock = -1;
+    static struct sockaddr_in server;
+    int slen=sizeof(server);
+    char stat_buffer[1024];
+    int length;
+    if (sock == -1) {
+
+        memset((char *) &server, 0, sizeof(server));
+        server.sin_family = AF_INET;
+        server.sin_port = htons(8125);
+        if (inet_aton("127.0.0.1", &server.sin_addr)==0)
+            {
+            builtin_error("Can't initialize Statsd server address");
+            return 0;
+            }
+        if((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) == -1)
+            {
+            builtin_error("Can't initialize Statsd socket");
+            return 0;
+            }
+    }
+
+    length = snprintf(stat_buffer, 1024, "%s:%s|s", s->CheckString(), c->CheckString());
+    sendto(sock, stat_buffer, length, 0, (struct sockaddr*)&server, slen);
+    // printf("sent set: %s\n", stat_buffer);
+    //close(sock);
+    return 0;
+    %}
